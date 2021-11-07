@@ -2,4 +2,11 @@
 
 #include <string>
 
-void ChatotLib_GetTextFromScreen( void* screenBuffer, unsigned int rows, unsigned int columns, std::string& text);
+enum CLColourFormat
+{
+    BGR555,
+    BGR666,
+    BGR888
+};
+
+void ChatotLib_GetTextFromScreen( void* screenBuffer, unsigned int rows, unsigned int columns, CLColourFormat format, std::string& text);

@@ -173,7 +173,31 @@ static void findSquares(const Mat& image, vector<vector<Point> >& squares)
     deduplicateSquares(squares);
 }
 
-void ChatotLib_GetTextFromScreen(void* screenBuffer, unsigned int rows, unsigned int columns, std::string& text)
+void ChatotLib_GetTextFromScreen(void* screenBuffer, unsigned int rows, unsigned int columns, CLColourFormat format, std::string& text)
 {
-    Mat image((int) rows, (int) columns, CV_8UC2, screenBuffer);
+    try
+    {
+        int cvType = 0;
+
+        switch (format)
+        {
+            case BGR555:
+                break;
+            case BGR666:
+                break;
+            case BGR888:
+                cvType = CV_8UC3;
+                break;
+        }
+
+        Mat image((int)rows, (int)columns, cvType, screenBuffer);
+        vector<vector<Point>> squares;
+
+        findSquares(image, squares);
+        cout << "Found " << squares.size() << " squares" << endl;
+    }
+    catch (cv::Exception& e)
+    {
+        cout << e.what() << endl;
+    }
 }

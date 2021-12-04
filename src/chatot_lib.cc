@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <string>
 
 #include "chatot_lib.h"
 
@@ -9,10 +10,14 @@
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui.hpp"
 
+#include <tesseract/baseapi.h>
+
 using namespace cv;
 using namespace std;
 
 int thresh = 50, N = 10;
+
+static tesseract::TessBaseAPI* g_api = NULL;
 
 // helper function:
 // finds a cosine of angle between vectors
@@ -173,6 +178,13 @@ static void findSquares(const Mat& image, vector<vector<Point> >& squares)
     deduplicateSquares(squares);
 }
 
+void ChatotLib_Initialize()
+{
+    g_api = new tesseract::TessBaseAPI();
+    g_api->Init(NULL, "eng", tesseract::OEM_LSTM_ONLY);
+    g_api->SetPageSegMode(tesseract::PSM_AUTO);
+}
+
 void ChatotLib_GetTextFromScreen(void* screenBuffer, unsigned int rows, unsigned int columns, CLColourFormat format, std::string& text)
 {
     try
@@ -194,7 +206,28 @@ void ChatotLib_GetTextFromScreen(void* screenBuffer, unsigned int rows, unsigned
         vector<vector<Point>> squares;
 
         findSquares(image, squares);
-        cout << "Found " << squares.size() << " squares" << endl;
+        //cout << "Found " << squares.size() << " squares" << endl;
+
+        for (vector<Point> square : squares)
+        {
+            // TODO: Enlarge square slightly to make sure text isn't cut off
+
+            int width = square[2].x - square[1].x;
+            int height = square[1].y - square[0].y;
+
+            // Start at top left corner (second Point in the vector)
+            Mat cropped(square[1].x, square[1].y, width, height);
+
+            if (g_api)
+            {
+                g_api->SetImage(cropped.data, cropped.cols, cropped.rows, 3, cropped.step);
+                char* text_ptr = g_api->GetUTF8Text();
+                if (text_ptr)
+                {
+                    text = string();
+                }
+            }
+        }
     }
     catch (cv::Exception& e)
     {

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <cmath>
 #include <string>
@@ -66,6 +67,11 @@ static void deduplicateSquares(vector<vector<Point>>& squares)
     vector<vector<Point>> keep;
     vector<Point> squareToCompare;
     bool changed = true;
+
+    if (0 == squares.size())
+    {
+        return;
+    }
 
     //cout << "Number of squares before: " << squares.size() << endl;
 
@@ -178,59 +184,148 @@ static void findSquares(const Mat& image, vector<vector<Point> >& squares)
     deduplicateSquares(squares);
 }
 
+int lowestX(vector<Point>& square)
+{
+    int lowest = 1000000;
+
+    for (Point p : square)
+    {
+        if (p.x < lowest)
+        {
+            lowest = p.x;
+        }
+    }
+
+    return lowest;
+}
+
+int highestX(vector<Point>& square)
+{
+    int highest = 0;
+
+    for (Point p : square)
+    {
+        if (p.x > highest)
+        {
+            highest = p.x;
+        }
+    }
+
+    return highest;
+}
+
+int lowestY(vector<Point>& square)
+{
+    int lowest = 1000000;
+
+    for (Point p : square)
+    {
+        if (p.y < lowest)
+        {
+            lowest = p.y;
+        }
+    }
+
+    return lowest;
+}
+
+int highestY(vector<Point>& square)
+{
+    int highest = 0;
+
+    for (Point p : square)
+    {
+        if (p.y > highest)
+        {
+            highest = p.y;
+        }
+    }
+
+    return highest;
+}
+
 void ChatotLib_Initialize()
 {
     g_api = new tesseract::TessBaseAPI();
     g_api->Init(NULL, "eng", tesseract::OEM_LSTM_ONLY);
     g_api->SetPageSegMode(tesseract::PSM_AUTO);
+    g_api->SetVariable("debug_file", "NUL");
 }
 
 void ChatotLib_GetTextFromScreen(void* screenBuffer, unsigned int rows, unsigned int columns, CLColourFormat format, std::string& text)
 {
-    try
+    if (screenBuffer && rows > 0 && columns > 0)
     {
-        int cvType = 0;
-
-        switch (format)
+        try
         {
+            int cvType = 0;
+
+            switch (format)
+            {
             case BGR555:
                 break;
             case BGR666:
                 break;
             case BGR888:
-                cvType = CV_8UC3;
+                cvType = CV_8UC4;
                 break;
-        }
+            }
 
-        Mat image((int)rows, (int)columns, cvType, screenBuffer);
-        vector<vector<Point>> squares;
+            //cout << "image rows=" << rows << " columns=" << columns << endl;
+            Mat image((int)columns, (int)rows, cvType, screenBuffer);
 
-        findSquares(image, squares);
-        //cout << "Found " << squares.size() << " squares" << endl;
+            //Mat image2;
+            //cvtColor(image, image2, COLOR_RGBA2BGR);
 
-        for (vector<Point> square : squares)
-        {
-            // TODO: Enlarge square slightly to make sure text isn't cut off
+            // Used for dumping raw RGB data
+            //ofstream myfile;
+            //myfile.open("C:\\temp\\dump.bin");
+            //myfile.write((const char*)screenBuffer, rows * columns * 4);
+            //myfile.close();
 
-            int width = square[2].x - square[1].x;
-            int height = square[1].y - square[0].y;
+            //imwrite("C:\\temp\\dump.bmp", image);
 
-            // Start at top left corner (second Point in the vector)
-            Mat cropped(square[1].x, square[1].y, width, height);
+            vector<vector<Point>> squares;
 
-            if (g_api)
+            findSquares(image, squares);
+            //cout << "Found " << squares.size() << " squares" << endl;
+
+            for (vector<Point> square : squares)
             {
-                g_api->SetImage(cropped.data, cropped.cols, cropped.rows, 3, cropped.step);
-                char* text_ptr = g_api->GetUTF8Text();
-                if (text_ptr)
+                // TODO: Enlarge square slightly to make sure text isn't cut off
+
+                //cout << "0: (" << square[0].x << "," << square[0].y << ")" << endl;
+                //cout << "1: (" << square[1].x << "," << square[1].y << ")" << endl;
+                //cout << "2: (" << square[2].x << "," << square[2].y << ")" << endl;
+                //cout << "3: (" << square[3].x << "," << square[3].y << ")" << endl;
+
+                int lowestXarg = lowestX(square);
+                int highestXarg = highestX(square);
+                int lowestYarg = lowestY(square);
+                int highestYarg = highestY(square);
+                //cout << "lowestXarg=" << lowestXarg << " highestXarg=" << highestXarg << endl;
+                //cout << "lowestYarg=" << lowestYarg << " highestYarg=" << highestYarg << endl;
+
+                Range rowsRange(lowestYarg, highestYarg);
+                Range colsRange(lowestXarg, highestXarg);
+                Mat cropped(image, rowsRange, colsRange);
+                //imwrite("C:\\temp\\dump.bmp", cropped);
+
+                if (g_api)
                 {
-                    text = string();
+                    //cout << "cols=" << cropped.cols << " rows=" << cropped.rows << " step=" << cropped.step << endl;
+                    g_api->SetImage(cropped.data, cropped.cols, cropped.rows, 4, cropped.step);
+                    char* text_ptr = g_api->GetUTF8Text();
+                    if (text_ptr)
+                    {
+                        text = string(text_ptr);
+                    }
                 }
             }
         }
-    }
-    catch (cv::Exception& e)
-    {
-        cout << e.what() << endl;
+        catch (cv::Exception& e)
+        {
+            cout << e.what() << endl;
+        }
     }
 }

@@ -12,3 +12,5 @@ enum CLColourFormat
 void ChatotLib_Initialize();
 
 void ChatotLib_GetTextFromScreen( void* screenBuffer, unsigned int rows, unsigned int columns, CLColourFormat format, std::string& text);
+
+void ChatotLib_CorrectText( const std::string& inText, std::string& outText );

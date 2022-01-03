@@ -13,12 +13,16 @@
 
 #include <tesseract/baseapi.h>
 
+#include <nuspell/dictionary.hxx>
+#include <nuspell/finder.hxx>
+
 using namespace cv;
 using namespace std;
 
 int thresh = 50, N = 10;
 
 static tesseract::TessBaseAPI* g_api = NULL;
+static nuspell::v5::Dictionary g_dict;
 
 // helper function:
 // finds a cosine of angle between vectors
@@ -246,10 +250,14 @@ int highestY(vector<Point>& square)
 
 void ChatotLib_Initialize()
 {
+    // Initialize Tesseract
     g_api = new tesseract::TessBaseAPI();
     g_api->Init(NULL, "eng", tesseract::OEM_LSTM_ONLY);
     g_api->SetPageSegMode(tesseract::PSM_AUTO);
     g_api->SetVariable("debug_file", "NUL");
+
+    // Initialize nuspell
+    g_dict = nuspell::Dictionary::load_from_path("en_US");
 }
 
 void ChatotLib_GetTextFromScreen(void* screenBuffer, unsigned int rows, unsigned int columns, CLColourFormat format, std::string& text)
@@ -327,5 +335,46 @@ void ChatotLib_GetTextFromScreen(void* screenBuffer, unsigned int rows, unsigned
         {
             cout << e.what() << endl;
         }
+    }
+}
+
+void ChatotLib_CorrectText(const std::string& inText, std::string& outText)
+{
+    string inTextCopy(inText);
+    string space_delimiter = " ";
+    vector<string> words{};
+    vector<string> sugs{};
+
+    std::replace(inTextCopy.begin(), inTextCopy.end(), '\n', ' ');
+
+    size_t pos = 0;
+    while ((pos = inTextCopy.find(space_delimiter)) != string::npos) {
+        words.push_back(inTextCopy.substr(0, pos));
+        inTextCopy.erase(0, pos + space_delimiter.length());
+    }
+
+    size_t i = 0;
+    for (auto iter = words.begin(); iter != words.end(); iter++)
+    {
+        auto word = *iter;
+        if (g_dict.spell(word))
+        {
+            outText += word + " ";
+        }
+        else
+        {
+            sugs.clear();
+            g_dict.suggest(word, sugs);
+
+            if (!sugs.empty())
+            {
+                outText += sugs[0] + " ";
+            }
+            else
+            {
+                outText += word + " ";
+            }
+        }
+        i++;
     }
 }

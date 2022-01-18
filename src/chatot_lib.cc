@@ -319,10 +319,26 @@ void ChatotLib_GetTextFromScreen(void* screenBuffer, unsigned int rows, unsigned
                 Mat cropped(image, rowsRange, colsRange);
                 //imwrite("C:\\temp\\dump.bmp", cropped);
 
+                Mat resized;
+                cv::resize(cropped, resized, Size(), 2.0, 2.0, INTER_AREA);
+
+                //Mat grey;
+                //cv::cvtColor(resized, grey, COLOR_BGR2GRAY);
+
+                //Mat dilated;
+                //dilate(grey, dilated, Mat(), Point(-1, -1), 1, 1, 1);
+
+                //Mat eroded;
+                //erode(dilated, eroded, Mat(), Point(-1, -1), 1, 1, 1);
+
+                //char buf[1024] = { 0 };
+                //sprintf(buf, "C:\\temp\\dump_%d.bmp", time(NULL));
+                //imwrite(buf, resized);
+
                 if (g_api)
                 {
                     //cout << "cols=" << cropped.cols << " rows=" << cropped.rows << " step=" << cropped.step << endl;
-                    g_api->SetImage(cropped.data, cropped.cols, cropped.rows, 4, cropped.step);
+                    g_api->SetImage(resized.data, resized.cols, resized.rows, 4, resized.step);
                     char* text_ptr = g_api->GetUTF8Text();
                     if (text_ptr)
                     {
